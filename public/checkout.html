@@ -1,0 +1,364 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameSphere - Checkout</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { margin: 0; overflow-x: hidden; }
+        #bg-image {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: -2;
+        }
+        .checkout-page, .main-nav, .login-modal, .register-modal {
+            position: relative; z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg"></canvas>
+    <img id="bg-image" src="act.webp" alt="Moving Background"/>
+
+    <nav class="main-nav">
+        <div class="nav-logo">
+            <span class="logo-text">GameSphere</span>
+            <div class="logo-particle" id="logo-particle"></div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link">Home</a></li>
+            <li><a href="games.html" class="nav-link">Games</a></li>
+            <li><a href="categories.html" class="nav-link">Categories</a></li>
+            <li><a href="cart.html" class="nav-link" id="cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+            </a></li>
+            <li><a href="orders.html" class="nav-link">Orders</a></li>
+            <li><a href="admin.html" class="nav-link admin-only" style="display: none;">Admin</a></li>
+            <li><a href="#" class="nav-link" id="login-btn">Login</a></li>
+        </ul>
+        <div class="hamburger" id="hamburger">
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+        </div>
+    </nav>
+
+    <main class="checkout-page">
+        <div class="checkout-container">
+            <div class="checkout-header">
+                <h1>Checkout</h1>
+                <div class="checkout-steps">
+                    <div class="step active" data-step="1">
+                        <span>1</span>
+                        <p>Shipping</p>
+                    </div>
+                    <div class="step" data-step="2">
+                        <span>2</span>
+                        <p>Payment</p>
+                    </div>
+                    <div class="step" data-step="3">
+                        <span>3</span>
+                        <p>Confirmation</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="checkout-content">
+                <form class="checkout-form" id="checkout-form">
+                    <div class="checkout-step active" id="shipping-step">
+                        <h2>Shipping Information</h2>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="first-name">First Name</label>
+                                <input type="text" id="first-name" name="first_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="last-name">Last Name</label>
+                                <input type="text" id="last-name" name="last_name" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="address">Address</label>
+                            <input type="text" id="address" name="address" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="city">City</label>
+                                <input type="text" id="city" name="city" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="zip">ZIP Code</label>
+                                <input type="text" id="zip" name="zip" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="country">Country</label>
+                            <select id="country" name="country" required>
+                                <option value="">Select Country</option>
+                                <option value="US">United States</option>
+                                <option value="CA">Canada</option>
+                                <option value="UK">United Kingdom</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="save-info" name="save_info">
+                            <label for="save-info">Save this information for next time</label>
+                        </div>
+                        <div class="checkout-actions">
+                            <a href="cart.html" class="back-btn">Back to Cart</a>
+                            <button type="button" class="next-btn" id="shipping-next">Continue to Payment</button>
+                        </div>
+                    </div>
+                    
+                    <div class="checkout-step" id="payment-step">
+                        <h2>Payment Method</h2>
+                        <div class="payment-options">
+                            <div class="payment-option active" data-method="credit">
+                                <input type="radio" name="payment_method" id="credit-card" value="credit_card" checked>
+                                <label for="credit-card">
+                                    <i class="far fa-credit-card"></i>
+                                    Credit Card
+                                </label>
+                            </div>
+                            <div class="payment-option" data-method="paypal">
+                                <input type="radio" name="payment_method" id="paypal" value="paypal">
+                                <label for="paypal">
+                                    <i class="fab fa-paypal"></i>
+                                    PayPal
+                                </label>
+                            </div>
+                            <div class="payment-option" data-method="crypto">
+                                <input type="radio" name="payment_method" id="crypto" value="crypto">
+                                <label for="crypto">
+                                    <i class="fas fa-coins"></i>
+                                    Cryptocurrency
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="payment-details active" id="credit-card-details">
+                            <div class="form-group">
+                                <label for="card-number">Card Number</label>
+                                <input type="text" id="card-number" name="card_number" placeholder="1234 5678 9012 3456" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="expiry">Expiry Date</label>
+                                    <input type="text" id="expiry" name="expiry" placeholder="MM/YY" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cvv">CVV</label>
+                                    <input type="text" id="cvv" name="cvv" placeholder="123" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="card-name">Name on Card</label>
+                                <input type="text" id="card-name" name="card_name" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="checkbox" id="save-card" name="save_card">
+                                <label for="save-card">Save card for future payments</label>
+                            </div>
+                        </div>
+                        
+                        <div class="payment-details" id="paypal-details">
+                            <p>You will be redirected to PayPal to complete your payment securely.</p>
+                        </div>
+                        
+                        <div class="payment-details" id="crypto-details">
+                            <div class="form-group">
+                                <label for="crypto-wallet">Select Cryptocurrency</label>
+                                <select id="crypto-wallet" name="crypto_wallet">
+                                    <option value="bitcoin">Bitcoin (BTC)</option>
+                                    <option value="ethereum">Ethereum (ETH)</option>
+                                    <option value="litecoin">Litecoin (LTC)</option>
+                                    <option value="usdc">USD Coin (USDC)</option>
+                                </select>
+                            </div>
+                            <p class="crypto-note">After placing your order, you'll receive wallet details to complete the payment.</p>
+                        </div>
+                        
+                        <div class="checkout-actions">
+                            <button type="button" class="back-btn" id="payment-back">Back</button>
+                            <button type="button" class="next-btn" id="payment-next">Place Order</button>
+                        </div>
+                    </div>
+                    
+                    <div class="checkout-step" id="confirmation-step">
+                        <div class="confirmation-content">
+                            <div class="confirmation-animation" id="confirmation-animation"></div>
+                            <h2>Order Confirmed!</h2>
+                            <p>Thank you for your purchase. Your order has been received and is being processed.</p>
+                            <div class="order-details">
+                                <div class="detail">
+                                    <span>Order Number:</span>
+                                    <span id="order-number"></span>
+                                </div>
+                                <div class="detail">
+                                    <span>Date:</span>
+                                    <span id="order-date"></span>
+                                </div>
+                                <div class="detail">
+                                    <span>Total:</span>
+                                    <span id="order-total"></span>
+                                </div>
+                                <div class="detail">
+                                    <span>Payment Method:</span>
+                                    <span id="payment-method"></span>
+                                </div>
+                            </div>
+                            <p class="confirmation-email">A confirmation email has been sent to <span id="customer-email"></span></p>
+                            <div class="confirmation-actions">
+                                <a href="index.html" class="home-btn">Back to Home</a>
+                                <a href="orders.html" class="order-btn">View Order Details</a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div class="summary-items" id="summary-items"></div>
+                    <div class="summary-totals">
+                        <div class="summary-row">
+                            <span>Subtotal</span>
+                            <span id="summary-subtotal">$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Discount</span>
+                            <span id="summary-discount">-$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Shipping</span>
+                            <span id="summary-shipping">$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Tax</span>
+                            <span id="summary-tax">$0.00</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Total</span>
+                            <span id="summary-total">$0.00</span>
+                        </div>
+                    </div>
+                    <div class="coupon-box">
+                        <input type="text" placeholder="Enter coupon code" id="coupon-code">
+                        <button id="apply-coupon">Apply</button>
+                    </div>
+                    <div class="secure-checkout">
+                        <i class="fas fa-lock"></i>
+                        <span>Secure Checkout</span>
+                        <div class="payment-icons">
+                            <i class="fab fa-cc-visa"></i>
+                            <i class="fab fa-cc-mastercard"></i>
+                            <i class="fab fa-cc-amex"></i>
+                            <i class="fab fa-cc-paypal"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="login-modal" id="login-modal">
+        <div class="modal-content">
+            <button class="close-modal" id="close-modal"><i class="fas fa-times"></i></button>
+            <h2>Welcome Back</h2>
+            <form class="login-form" id="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="login-button">Login</button>
+            </form>
+            <p class="register-text">Don't have an account? <a href="#" id="register-link">Register</a></p>
+        </div>
+    </div>
+
+    <div class="register-modal" id="register-modal">
+        <div class="modal-content">
+            <button class="close-modal" id="close-register-modal"><i class="fas fa-times"></i></button>
+            <h2>Create Account</h2>
+            <form class="register-form" id="register-form">
+                <div class="form-group">
+                    <label for="reg-username">Username</label>
+                    <input type="text" id="reg-username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Email</label>
+                    <input type="email" id="reg-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-confirm-password">Confirm Password</label>
+                    <input type="password" id="reg-confirm-password" name="confirm_password" required>
+                </div>
+                <button type="submit" class="register-button">Register</button>
+            </form>
+            <p class="login-text">Already have an account? <a href="#" id="login-link">Login</a></p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.7.1/gsap.min.js"></script>
+    <script src="js/GLTFLoader.js"></script>
+    <script src="js/OrbitControls.js"></script>
+    <script src="js/checkout.js"></script>
+</body>
+</html>
